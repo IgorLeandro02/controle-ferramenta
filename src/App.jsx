@@ -1,6 +1,4 @@
-import { useState, useEffect } from "react";
-import ExcelJS from "exceljs";
-import QRCode from "react-qr-code";
+import { useEffect, useState } from "react";
 
 export default function App() {
   const [itens, setItens] = useState([]);
@@ -8,16 +6,9 @@ export default function App() {
   const [busca, setBusca] = useState("");
   const [projetoSelecionado, setProjetoSelecionado] = useState("Todos");
   const [editandoId, setEditandoId] = useState(null);
-  const [itemQRCode, setItemQRCode] = useState(null);
-  const [movimentacao, setMovimentacao] = useState({
-    itemId: "",
-    tipo: "Retirada",
-    quantidade: "1",
-    responsavel: "",
-    observacao: "",
-  });
+  const [carregado, setCarregado] = useState(false);
 
-  const formularioInicial = {
+  const formularioVazio = {
     nome: "",
     projeto: "",
     informacoes: "",
@@ -25,37 +16,34 @@ export default function App() {
     localizacao: "",
     status: "Disponível",
   };
-  const [carregado, setCarregado] = useState(false);
-  const [formulario, setFormulario] = useState(formularioInicial);
+
+  const [formulario, setFormulario] = useState(formularioVazio);
 
   useEffect(() => {
-  const dadosItens = localStorage.getItem("ferramentas");
-  const dadosHistorico = localStorage.getItem("historicoFerramentas");
+    const itensSalvos = localStorage.getItem("controleFerramentas_itens");
+    const historicoSalvo = localStorage.getItem("controleFerramentas_historico");
 
-  if (dadosItens) {
-    setItens(JSON.parse(dadosItens));
-  }
+    if (itensSalvos) setItens(JSON.parse(itensSalvos));
+    if (historicoSalvo) setHistorico(JSON.parse(historicoSalvo));
 
-  if (dadosHistorico) {
-    setHistorico(JSON.parse(dadosHistorico));
-  }
+    setCarregado(true);
+  }, []);
 
-  setCarregado(true);
-}, []);
+  useEffect(() => {
+    if (carregado) {
+      localStorage.setItem("controleFerramentas_itens", JSON.stringify(itens));
+    }
+  }, [itens, carregado]);
 
-useEffect(() => {
-  if (carregado) {
-    localStorage.setItem("ferramentas", JSON.stringify(itens));
-  }
-}, [itens, carregado]);
+  useEffect(() => {
+    if (carregado) {
+      localStorage.setItem("controleFerramentas_historico", JSON.stringify(historico));
+    }
+  }, [historico, carregado]);
 
-useEffect(() => {
-  if (carregado) {
-    localStorage.setItem("historicoFerramentas", JSON.stringify(historico));
-  }
-}, [historico, carregado]);
+  const dataAtual = () => new Date().toLocaleString("pt-BR");
 
-  const limparTextoCodigo = (texto) => {
+  const limparTexto = (texto) => {
     return texto
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
@@ -63,8 +51,8 @@ useEffect(() => {
       .trim();
   };
 
-  const gerarPrefixoProjeto = (projeto) => {
-    const textoLimpo = limparTextoCodigo(projeto);
+  const gerarPrefixo = (projeto) => {
+    const textoLimpo = limparTexto(projeto);
     const palavras = textoLimpo.split(/\s+/).filter(Boolean);
 
     if (palavras.length === 0) return "GER";
@@ -80,53 +68,55 @@ useEffect(() => {
       .toUpperCase();
   };
 
-  const gerarCodigo = (projeto) => {
-    return gerarCodigoComBase(itens, projeto);
+  const gerarTag = (projeto) => {
+    const prefixo = gerarPrefixo(projeto);
+    const totalMesmoPrefixo = itens.filter(
+      (item) => gerarPrefixo(item.projeto) === prefixo
+    ).length;
+
+    return `${prefixo}-${String(totalMesmoPrefixo + 1).padStart(3, "0")}`;
   };
 
-  const gerarCodigoComBase = (listaItens, projeto) => {
-    const prefixo = gerarPrefixoProjeto(projeto);
-    const itensDoMesmoProjeto = listaItens.filter(
-      (item) => gerarPrefixoProjeto(item.projeto) === prefixo
-    );
-    const numero = itensDoMesmoProjeto.length + 1;
-
-    return `${prefixo}-${String(numero).padStart(3, "0")}`;
-  };
-
-  const dataHoraAtual = () => {
-    return new Date().toLocaleString("pt-BR");
-  };
-
-  const registrarHistorico = ({ item, tipo, quantidade, responsavel, observacao }) => {
+  const registrarHistorico = ({
+    item,
+    tipo,
+    quantidade,
+    responsavel = "Sistema",
+    observacao = "-",
+  }) => {
     const novoRegistro = {
-      id: Date.now(),
-      data: dataHoraAtual(),
-      codigo: item.codigo,
+      id: Date.now() + Math.random(),
+      data: dataAtual(),
+      tag: item.tag,
       item: item.nome,
       tipo,
       quantidade,
-      responsavel: responsavel || "Não informado",
-      observacao: observacao || "-",
+      responsavel,
+      observacao,
     };
 
-    setHistorico([novoRegistro, ...historico]);
+    setHistorico((historicoAtual) => [novoRegistro, ...historicoAtual]);
   };
 
   const limparFormulario = () => {
-    setFormulario(formularioInicial);
+    setFormulario(formularioVazio);
     setEditandoId(null);
   };
 
   const salvarItem = () => {
-    if (!formulario.nome || !formulario.projeto || !formulario.quantidade || Number(formulario.quantidade) < 0) {
-      alert("Preencha nome, projeto/área e quantidade corretamente.");
+    if (!formulario.nome || !formulario.projeto || !formulario.quantidade) {
+      alert("Preencha nome, projeto/área e quantidade.");
+      return;
+    }
+
+    if (Number(formulario.quantidade) < 0) {
+      alert("A quantidade não pode ser negativa.");
       return;
     }
 
     if (editandoId) {
-      setItens(
-        itens.map((item) =>
+      setItens((itensAtuais) =>
+        itensAtuais.map((item) =>
           item.id === editandoId
             ? {
                 ...item,
@@ -136,26 +126,32 @@ useEffect(() => {
             : item
         )
       );
+
       limparFormulario();
       return;
     }
 
     const novoItem = {
-      id: Date.now(),
-      codigo: gerarCodigo(formulario.projeto),
-      ...formulario,
+      id: Date.now() + Math.random(),
+      tag: gerarTag(formulario.projeto),
+      nome: formulario.nome,
+      projeto: formulario.projeto,
+      informacoes: formulario.informacoes,
       quantidade: Number(formulario.quantidade),
-      criadoEm: dataHoraAtual(),
+      localizacao: formulario.localizacao,
+      status: formulario.status,
+      criadoEm: dataAtual(),
     };
 
-    setItens([...itens, novoItem]);
+    setItens((itensAtuais) => [...itensAtuais, novoItem]);
+
     registrarHistorico({
       item: novoItem,
       tipo: "Cadastro",
       quantidade: novoItem.quantidade,
-      responsavel: "Sistema",
       observacao: "Item cadastrado no sistema",
     });
+
     limparFormulario();
   };
 
@@ -169,275 +165,37 @@ useEffect(() => {
       localizacao: item.localizacao,
       status: item.status,
     });
+
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const removerItem = (id) => {
-    const item = itens.find((ferramenta) => ferramenta.id === id);
-    if (!item) return;
-
-    const confirmar = confirm(`Deseja remover o item ${item.nome}?`);
+  const removerItem = (item) => {
+    const confirmar = confirm(`Deseja remover ${item.nome}?`);
     if (!confirmar) return;
 
-    setItens(itens.filter((ferramenta) => ferramenta.id !== id));
+    setItens((itensAtuais) => itensAtuais.filter((i) => i.id !== item.id));
+
     registrarHistorico({
       item,
       tipo: "Remoção",
       quantidade: item.quantidade,
-      responsavel: "Sistema",
-      observacao: "Item removido do cadastro",
+      observacao: "Item removido do sistema",
     });
   };
 
-  const alterarStatus = (id, status) => {
-    const item = itens.find((ferramenta) => ferramenta.id === id);
-    if (!item) return;
-
-    setItens(
-      itens.map((ferramenta) =>
-        ferramenta.id === id ? { ...ferramenta, status } : ferramenta
+  const alterarStatus = (item, novoStatus) => {
+    setItens((itensAtuais) =>
+      itensAtuais.map((i) =>
+        i.id === item.id ? { ...i, status: novoStatus } : i
       )
     );
 
     registrarHistorico({
       item,
-      tipo: "Alteração de status",
+      tipo: "Status",
       quantidade: item.quantidade,
-      responsavel: "Sistema",
-      observacao: `Status alterado para ${status}`,
+      observacao: `Status alterado para ${novoStatus}`,
     });
-  };
-
-  const registrarMovimentacao = () => {
-    if (!movimentacao.itemId || !movimentacao.quantidade || !movimentacao.responsavel) {
-      alert("Selecione o item, informe a quantidade e o responsável.");
-      return;
-    }
-
-    const itemSelecionado = itens.find(
-      (item) => item.id === Number(movimentacao.itemId)
-    );
-
-    if (!itemSelecionado) return;
-
-    const quantidadeMovimentada = Number(movimentacao.quantidade);
-
-    if (quantidadeMovimentada <= 0) {
-      alert("A quantidade precisa ser maior que zero.");
-      return;
-    }
-
-    if (movimentacao.tipo === "Retirada" && quantidadeMovimentada > itemSelecionado.quantidade) {
-      alert("Quantidade insuficiente em estoque.");
-      return;
-    }
-
-    const novaQuantidade =
-      movimentacao.tipo === "Retirada"
-        ? itemSelecionado.quantidade - quantidadeMovimentada
-        : itemSelecionado.quantidade + quantidadeMovimentada;
-
-    const novoStatus = novaQuantidade <= 0 ? "Em uso" : itemSelecionado.status;
-
-    setItens(
-      itens.map((item) =>
-        item.id === itemSelecionado.id
-          ? { ...item, quantidade: novaQuantidade, status: novoStatus }
-          : item
-      )
-    );
-
-    registrarHistorico({
-      item: itemSelecionado,
-      tipo: movimentacao.tipo,
-      quantidade: quantidadeMovimentada,
-      responsavel: movimentacao.responsavel,
-      observacao: movimentacao.observacao,
-    });
-
-    setMovimentacao({
-      itemId: "",
-      tipo: "Retirada",
-      quantidade: "1",
-      responsavel: "",
-      observacao: "",
-    });
-  };
-
-  const importarArquivo = (evento) => {
-    const arquivo = evento.target.files?.[0];
-    if (!arquivo) return;
-
-    const extensao = arquivo.name.split(".").pop().toLowerCase();
-    const leitor = new FileReader();
-
-    const normalizarValor = (valor) => {
-      if (valor === null || valor === undefined) return "";
-      if (typeof valor === "object") {
-        if (valor.text) return String(valor.text);
-        if (valor.result) return String(valor.result);
-        if (valor.richText) return valor.richText.map((parte) => parte.text).join("");
-        return String(valor);
-      }
-      return String(valor);
-    };
-
-    const normalizarCabecalho = (texto) => {
-      return normalizarValor(texto)
-        .normalize("NFD")
-        .replace(/[̀-ͯ]/g, "")
-        .replace(/[^a-zA-Z0-9]/g, "")
-        .toLowerCase();
-    };
-
-    const buscarCampo = (linha, nomesPossiveis) => {
-      for (const nome of nomesPossiveis) {
-        const chave = normalizarCabecalho(nome);
-        if (linha[chave] !== undefined && linha[chave] !== null && linha[chave] !== "") {
-          return linha[chave];
-        }
-      }
-      return "";
-    };
-
-    const montarLinhasPorMatriz = (matriz) => {
-      const indiceCabecalho = matriz.findIndex((linha) => {
-        const cabecalhos = linha.map((celula) => normalizarCabecalho(celula));
-        const temItem = cabecalhos.includes("itemequipamento") || cabecalhos.includes("nome") || cabecalhos.includes("item");
-        const temQuantidade = cabecalhos.includes("quantidade") || cabecalhos.includes("qtd");
-        return temItem && temQuantidade;
-      });
-
-      if (indiceCabecalho === -1) return [];
-
-      const cabecalhos = matriz[indiceCabecalho].map((celula) => normalizarCabecalho(celula));
-
-      return matriz.slice(indiceCabecalho + 1).map((linha) => {
-        const objeto = {};
-        cabecalhos.forEach((cabecalho, index) => {
-          if (cabecalho) objeto[cabecalho] = linha[index] ?? "";
-        });
-        return objeto;
-      });
-    };
-
-    const processarLinhas = (linhas) => {
-      if (linhas.length === 0) {
-        alert("Não encontrei a linha de cabeçalho da planilha. Verifique se existe uma linha com Item/Equipamento e Quantidade.");
-        return;
-      }
-
-      let listaAtualizada = [...itens];
-      const novosItens = [];
-
-      linhas.forEach((linha) => {
-        const nome = normalizarValor(buscarCampo(linha, ["Nome", "Item", "Nome do Item", "Item/Equipamento", "Equipamento"])).trim();
-        const projeto = normalizarValor(buscarCampo(linha, ["Projeto/Área", "Projeto", "Área", "Area", "Projeto/Grupo", "Grupo"])).trim();
-        const categoria = normalizarValor(buscarCampo(linha, ["Categoria"])).trim();
-        const codigoPlanilha = normalizarValor(buscarCampo(linha, ["Tag/Código", "Tag", "Código", "Codigo", "TAG Lab", "TAG"])).trim();
-        const quantidade = Number(buscarCampo(linha, ["Quantidade", "Qtd", "QTD"]) || 0);
-        const localizacao = normalizarValor(buscarCampo(linha, ["Localização", "Localizacao", "Local"])).trim();
-        const armazenamento = normalizarValor(buscarCampo(linha, ["Armazenamento"])).trim();
-        const prateleira = normalizarValor(buscarCampo(linha, ["Prateleira/Posição", "Prateleira/Posicao", "Prateleira", "Posição", "Posicao"])).trim();
-        const status = normalizarValor(buscarCampo(linha, ["Status"]) || "Disponível").trim() || "Disponível";
-        const informacoesPlanilha = normalizarValor(buscarCampo(linha, ["Informações", "Informacoes", "Descrição", "Descricao"])).trim();
-
-        if (!nome || quantidade < 0) return;
-
-        const projetoFinal = projeto || "Sem Projeto";
-        const detalhes = [
-          informacoesPlanilha,
-          categoria ? `Categoria: ${categoria}` : "",
-          armazenamento ? `Armazenamento: ${armazenamento}` : "",
-          prateleira ? `Prateleira/Posição: ${prateleira}` : "",
-        ]
-          .filter(Boolean)
-          .join(" | ");
-
-        const novoItem = {
-          id: Date.now() + Math.random(),
-          codigo: codigoPlanilha && codigoPlanilha !== "0" ? codigoPlanilha : gerarCodigoComBase(listaAtualizada, projetoFinal),
-          nome,
-          projeto: projetoFinal,
-          informacoes: detalhes,
-          quantidade,
-          localizacao,
-          status,
-          criadoEm: dataHoraAtual(),
-        };
-
-        listaAtualizada = [...listaAtualizada, novoItem];
-        novosItens.push(novoItem);
-      });
-
-      if (novosItens.length === 0) {
-        alert("Nenhum item válido foi encontrado. Verifique se a planilha possui uma coluna de item/equipamento preenchida.");
-        return;
-      }
-
-      setItens(listaAtualizada);
-
-      const novosRegistros = novosItens.map((item) => ({
-        id: Date.now() + Math.random(),
-        data: dataHoraAtual(),
-        codigo: item.codigo,
-        item: item.nome,
-        tipo: "Importação",
-        quantidade: item.quantidade,
-        responsavel: "Sistema",
-        observacao: "Item importado de planilha",
-      }));
-
-      setHistorico([...novosRegistros, ...historico]);
-      alert(`${novosItens.length} item(ns) importado(s) com sucesso.`);
-    };
-
-    leitor.onload = async (e) => {
-      try {
-        if (extensao === "csv") {
-          const texto = e.target.result;
-          const linhasTexto = texto.split(/\r?\n/).filter((linha) => linha.trim() !== "");
-          const separador = linhasTexto[0]?.includes(";") ? ";" : ",";
-          const matriz = linhasTexto.map((linhaTexto) =>
-            linhaTexto.split(separador).map((campo) => campo.replaceAll('"', "").trim())
-          );
-
-          processarLinhas(montarLinhasPorMatriz(matriz));
-        } else if (extensao === "xlsx") {
-          const workbook = new ExcelJS.Workbook();
-          await workbook.xlsx.load(e.target.result);
-          const planilha = workbook.worksheets[0];
-
-          if (!planilha) {
-            alert("Nenhuma aba foi encontrada na planilha.");
-            return;
-          }
-
-          const matriz = [];
-          planilha.eachRow((row) => {
-            const linha = [];
-            row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-              linha[colNumber - 1] = normalizarValor(cell.value).trim();
-            });
-            matriz.push(linha);
-          });
-
-          processarLinhas(montarLinhasPorMatriz(matriz));
-        } else {
-          alert("Formato não suportado. Use .xlsx ou .csv.");
-        }
-      } catch (erro) {
-        alert("Não foi possível importar a planilha. Verifique se o arquivo está no formato .xlsx ou .csv.");
-      }
-
-      evento.target.value = "";
-    };
-
-    if (extensao === "csv") {
-      leitor.readAsText(arquivo, "UTF-8");
-    } else {
-      leitor.readAsArrayBuffer(arquivo);
-    }
   };
 
   const exportarCSV = () => {
@@ -447,7 +205,7 @@ useEffect(() => {
     }
 
     const cabecalho = [
-      "Tag/Código",
+      "Tag",
       "Nome",
       "Projeto/Área",
       "Informações",
@@ -458,7 +216,7 @@ useEffect(() => {
     ];
 
     const linhas = itens.map((item) => [
-      item.codigo,
+      item.tag,
       item.nome,
       item.projeto,
       item.informacoes,
@@ -469,10 +227,17 @@ useEffect(() => {
     ]);
 
     const csv = [cabecalho, ...linhas]
-      .map((linha) => linha.map((campo) => `"${String(campo ?? "").replaceAll('"', '""')}"`).join(";"))
+      .map((linha) =>
+        linha
+          .map((campo) => `"${String(campo ?? "").replaceAll('"', '""')}"`)
+          .join(";")
+      )
       .join("\n");
 
-    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob(["\ufeff" + csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -481,129 +246,102 @@ useEffect(() => {
     URL.revokeObjectURL(url);
   };
 
-  const projetosCadastrados = [
+  const projetos = [
     ...new Set(
       itens
-        .map((item) => item.projeto.trim())
-        .filter((projeto) => projeto !== "")
+        .map((item) => item.projeto)
+        .filter((projeto) => projeto.trim() !== "")
     ),
   ];
 
-  const itensDoProjetoSelecionado =
+  const itensPorProjeto =
     projetoSelecionado === "Todos"
       ? itens
       : itens.filter((item) => item.projeto === projetoSelecionado);
 
-  const itensFiltrados = itensDoProjetoSelecionado.filter((item) => {
+  const itensFiltrados = itensPorProjeto.filter((item) => {
     const termo = busca.toLowerCase();
+
     return (
+      item.tag.toLowerCase().includes(termo) ||
       item.nome.toLowerCase().includes(termo) ||
-      item.codigo.toLowerCase().includes(termo) ||
       item.projeto.toLowerCase().includes(termo) ||
       item.localizacao.toLowerCase().includes(termo) ||
       item.status.toLowerCase().includes(termo)
     );
   });
 
-  const totalItens = itens.reduce((acc, item) => acc + Number(item.quantidade), 0);
-  const totalDisponiveis = itens.filter((item) => item.status === "Disponível").length;
+  const totalQuantidade = itens.reduce(
+    (total, item) => total + Number(item.quantidade),
+    0
+  );
+
+  const totalDisponiveis = itens.filter(
+    (item) => item.status === "Disponível"
+  ).length;
+
   const totalEmUso = itens.filter((item) => item.status === "Em uso").length;
-  const totalManutencao = itens.filter((item) => item.status === "Manutenção").length;
 
-  const estiloStatus = (status) => {
-    if (status === "Disponível") return "bg-emerald-100 text-emerald-700 border-emerald-200";
-    if (status === "Em uso") return "bg-amber-100 text-amber-700 border-amber-200";
-    return "bg-rose-100 text-rose-700 border-rose-200";
-  };
-
-  const gerarDadosQRCode = (item) => {
-    return [
-      `Tag: ${item.codigo}`,
-      `Item: ${item.nome}`,
-      `Projeto/Área: ${item.projeto}`,
-      `Quantidade: ${item.quantidade}`,
-      `Localização: ${item.localizacao || "Não informada"}`,
-      `Status: ${item.status}`,
-      `Informações: ${item.informacoes || "Sem informações adicionais"}`,
-    ].join("/n");
-  };
-
-  const imprimirQRCode = () => {
-    window.print();
-  };
+  const totalManutencao = itens.filter(
+    (item) => item.status === "Manutenção"
+  ).length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-slate-200 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <header className="bg-white/90 backdrop-blur rounded-3xl shadow-lg border border-white p-6 md:p-8 mb-8">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+    <main className="min-h-screen bg-slate-100 p-4 md:p-8">
+      <div className="mx-auto max-w-7xl">
+        <header className="mb-8 rounded-3xl bg-white p-6 shadow-md md:p-8">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-sm font-bold uppercase tracking-[0.25em] text-blue-600">
-                Gestão de Almoxarifado
+              <p className="text-sm font-bold uppercase tracking-widest text-blue-600">
+                Sistema Interno
               </p>
-              <h1 className="text-3xl md:text-5xl font-black text-slate-800 mt-2">
+              <h1 className="mt-2 text-3xl font-black text-slate-800 md:text-5xl">
                 Controle de Ferramentas
               </h1>
-              <p className="text-slate-500 mt-3 max-w-2xl">
-                Cadastro, consulta, movimentação, histórico e controle de estoque dos itens da sua área.
+              <p className="mt-2 text-slate-500">
+                Cadastro, consulta, projeto, localização, status e histórico.
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:flex">
-              <label className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-2xl font-semibold shadow-md transition cursor-pointer text-center">
-                Importar Excel
-                <input
-                  type="file"
-                  accept=".xlsx,.csv"
-                  onChange={importarArquivo}
-                  className="hidden"
-                />
-              </label>
-
-              <button
-                onClick={exportarCSV}
-                className="bg-slate-900 hover:bg-slate-800 text-white px-5 py-3 rounded-2xl font-semibold shadow-md transition"
-              >
-                Exportar Excel
-              </button>
-              <div className="bg-blue-600 text-white rounded-2xl px-5 py-3 shadow-md">
-                <p className="text-xs text-blue-100">Ferramentas</p>
-                <p className="text-2xl font-bold">{itens.length}</p>
-              </div>
-            </div>
+            <button
+              onClick={exportarCSV}
+              className="rounded-2xl bg-slate-900 px-5 py-3 font-semibold text-white shadow transition hover:bg-slate-800"
+            >
+              Exportar Excel/CSV
+            </button>
           </div>
         </header>
 
-        <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
-          <Card titulo="Quantidade Total" valor={totalItens} descricao="Soma das unidades" cor="text-slate-800" />
-          <Card titulo="Disponíveis" valor={totalDisponiveis} descricao="Prontas para uso" cor="text-emerald-600" />
-          <Card titulo="Em Uso" valor={totalEmUso} descricao="Itens utilizados" cor="text-amber-500" />
-          <Card titulo="Manutenção" valor={totalManutencao} descricao="Itens indisponíveis" cor="text-rose-600" />
+        <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Card titulo="Quantidade Total" valor={totalQuantidade} texto="Soma das unidades" />
+          <Card titulo="Ferramentas" valor={itens.length} texto="Itens cadastrados" />
+          <Card titulo="Disponíveis" valor={totalDisponiveis} texto="Prontas para uso" />
+          <Card titulo="Em Uso / Manutenção" valor={totalEmUso + totalManutencao} texto="Itens controlados" />
         </section>
 
-        <section className="bg-white rounded-3xl shadow-md border border-slate-100 p-6 md:p-8 mb-8">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-slate-800">
-              {editandoId ? "Editar Ferramenta" : "Cadastro de Ferramentas"}
-            </h2>
-            <p className="text-slate-500 mt-1">
-              A tag será gerada automaticamente com as iniciais do projeto/área. Exemplo: Robótica → ROB-001.
-            </p>
-          </div>
+        <section className="mb-8 rounded-3xl bg-white p-6 shadow-md md:p-8">
+          <h2 className="text-2xl font-bold text-slate-800">
+            {editandoId ? "Editar Ferramenta" : "Cadastro de Ferramentas"}
+          </h2>
+          <p className="mt-1 text-slate-500">
+            A tag é gerada automaticamente pelo projeto/área. Exemplo: Robótica → ROB-001.
+          </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            <Campo label="Nome do Item" placeholder="Ex: Furadeira Bosch" valor={formulario.nome} onChange={(valor) => setFormulario({ ...formulario, nome: valor })} />
-            <Campo label="Projeto / Área" placeholder="Ex: Robótica" valor={formulario.projeto} onChange={(valor) => setFormulario({ ...formulario, projeto: valor })} />
-            <Campo label="Informações" placeholder="Ex: Voltagem, marca, modelo..." valor={formulario.informacoes} onChange={(valor) => setFormulario({ ...formulario, informacoes: valor })} />
-            <Campo label="Quantidade" tipo="number" placeholder="Ex: 10" valor={formulario.quantidade} onChange={(valor) => setFormulario({ ...formulario, quantidade: valor })} />
-            <Campo label="Localização" placeholder="Ex: Almoxarifado A" valor={formulario.localizacao} onChange={(valor) => setFormulario({ ...formulario, localizacao: valor })} />
+          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <Campo label="Nome do Item" valor={formulario.nome} placeholder="Ex: Alicate" onChange={(valor) => setFormulario({ ...formulario, nome: valor })} />
+            <Campo label="Projeto / Área" valor={formulario.projeto} placeholder="Ex: Robótica" onChange={(valor) => setFormulario({ ...formulario, projeto: valor })} />
+            <Campo label="Informações" valor={formulario.informacoes} placeholder="Ex: marca, modelo, observação" onChange={(valor) => setFormulario({ ...formulario, informacoes: valor })} />
+            <Campo label="Quantidade" tipo="number" valor={formulario.quantidade} placeholder="Ex: 3" onChange={(valor) => setFormulario({ ...formulario, quantidade: valor })} />
+            <Campo label="Localização" valor={formulario.localizacao} placeholder="Ex: Armário A" onChange={(valor) => setFormulario({ ...formulario, localizacao: valor })} />
 
             <div>
-              <label className="block text-sm font-semibold text-slate-600 mb-2">Status</label>
+              <label className="mb-2 block text-sm font-semibold text-slate-600">
+                Status
+              </label>
               <select
-                className="w-full border border-slate-200 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-400 bg-white"
                 value={formulario.status}
                 onChange={(e) => setFormulario({ ...formulario, status: e.target.value })}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400"
               >
                 <option>Disponível</option>
                 <option>Em uso</option>
@@ -612,144 +350,84 @@ useEffect(() => {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-3 mt-6">
+          <div className="mt-6 flex flex-wrap gap-3">
             <button
               onClick={salvarItem}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-semibold shadow-md transition"
+              className="rounded-2xl bg-blue-600 px-6 py-3 font-semibold text-white shadow transition hover:bg-blue-700"
             >
-              {editandoId ? "Salvar Alterações" : "Adicionar Ferramenta"}
+              {editandoId ? "Salvar Alterações" : "Cadastrar item"}
             </button>
 
             {editandoId && (
               <button
                 onClick={limparFormulario}
-                className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-6 py-3 rounded-2xl font-semibold transition"
+                className="rounded-2xl bg-slate-200 px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-300"
               >
-                Cancelar edição
+                Cancelar
               </button>
             )}
           </div>
         </section>
 
-        <section className="bg-white rounded-3xl shadow-md border border-slate-100 p-6 md:p-8 mb-8">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-slate-800">Retirada e Devolução</h2>
-            <p className="text-slate-500 mt-1">Registre movimentações para manter o estoque atualizado.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-slate-600 mb-2">Item</label>
-              <select
-                className="w-full border border-slate-200 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-400 bg-white"
-                value={movimentacao.itemId}
-                onChange={(e) => setMovimentacao({ ...movimentacao, itemId: e.target.value })}
-              >
-                <option value="">Selecione</option>
-                {itens.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.codigo} - {item.nome}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-slate-600 mb-2">Tipo</label>
-              <select
-                className="w-full border border-slate-200 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-400 bg-white"
-                value={movimentacao.tipo}
-                onChange={(e) => setMovimentacao({ ...movimentacao, tipo: e.target.value })}
-              >
-                <option>Retirada</option>
-                <option>Devolução</option>
-              </select>
-            </div>
-
-            <Campo label="Quantidade" tipo="number" placeholder="Ex: 1" valor={movimentacao.quantidade} onChange={(valor) => setMovimentacao({ ...movimentacao, quantidade: valor })} />
-            <Campo label="Responsável" placeholder="Ex: João Silva" valor={movimentacao.responsavel} onChange={(valor) => setMovimentacao({ ...movimentacao, responsavel: valor })} />
-            <Campo label="Observação" placeholder="Ex: Projeto X" valor={movimentacao.observacao} onChange={(valor) => setMovimentacao({ ...movimentacao, observacao: valor })} />
-          </div>
-
-          <button
-            onClick={registrarMovimentacao}
-            className="mt-6 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-2xl font-semibold shadow-md transition"
-          >
-            Registrar Movimentação
-          </button>
-        </section>
-
-        <section className="bg-white rounded-3xl shadow-md border border-slate-100 p-6 md:p-8 mb-8">
-          <div className="mb-6">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-5">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-800">Projetos Cadastrados</h2>
-                <p className="text-slate-500 mt-1">
-                  Clique em um projeto para visualizar somente os itens vinculados a ele.
-                </p>
-              </div>
-
-              <div className="bg-slate-100 rounded-2xl px-4 py-3 text-sm text-slate-600">
-                Projeto selecionado: <strong className="text-blue-700">{projetoSelecionado}</strong>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => setProjetoSelecionado("Todos")}
-                className={`px-5 py-3 rounded-2xl font-semibold shadow-sm transition ${
-                  projetoSelecionado === "Todos"
-                    ? "bg-blue-600 text-white"
-                    : "bg-slate-100 hover:bg-slate-200 text-slate-700"
-                }`}
-              >
-                Todos
-                <span className="ml-2 text-xs opacity-80">({itens.length})</span>
-              </button>
-
-              {projetosCadastrados.length > 0 ? (
-                projetosCadastrados.map((projeto) => {
-                  const quantidadeProjeto = itens.filter((item) => item.projeto === projeto).length;
-
-                  return (
-                    <button
-                      key={projeto}
-                      onClick={() => setProjetoSelecionado(projeto)}
-                      className={`px-5 py-3 rounded-2xl font-semibold shadow-sm transition ${
-                        projetoSelecionado === projeto
-                          ? "bg-blue-600 text-white"
-                          : "bg-white hover:bg-blue-50 text-slate-700 border border-slate-200"
-                      }`}
-                    >
-                      {projeto}
-                      <span className="ml-2 text-xs opacity-80">({quantidadeProjeto})</span>
-                    </button>
-                  );
-                })
-              ) : (
-                <p className="text-slate-500">Nenhum projeto cadastrado ainda.</p>
-              )}
-            </div>
-          </div>
-        </section>
-
-        <section className="bg-white rounded-3xl shadow-md border border-slate-100 p-6 md:p-8 mb-8">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+        <section className="mb-8 rounded-3xl bg-white p-6 shadow-md md:p-8">
+          <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="text-2xl font-bold text-slate-800">
-                {projetoSelecionado === "Todos" ? "Consulta e Controle" : `Aba do Projeto: ${projetoSelecionado}`}
+                Projetos Cadastrados
               </h2>
-              <p className="text-slate-500 mt-1">
-                {projetoSelecionado === "Todos"
-                  ? "Pesquise itens, edite cadastros e altere status rapidamente."
-                  : "Visualização filtrada apenas com os itens deste projeto."}
+              <p className="mt-1 text-slate-500">
+                Clique em um projeto para visualizar apenas os itens dele.
               </p>
             </div>
+            <div className="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-600">
+              Selecionado: <strong className="text-blue-700">{projetoSelecionado}</strong>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => setProjetoSelecionado("Todos")}
+              className={`rounded-2xl px-5 py-3 font-semibold transition ${
+                projetoSelecionado === "Todos"
+                  ? "bg-blue-600 text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              Todos ({itens.length})
+            </button>
+
+            {projetos.map((projeto) => (
+              <button
+                key={projeto}
+                onClick={() => setProjetoSelecionado(projeto)}
+                className={`rounded-2xl px-5 py-3 font-semibold transition ${
+                  projetoSelecionado === projeto
+                    ? "bg-blue-600 text-white"
+                    : "border border-slate-200 bg-white text-slate-700 hover:bg-blue-50"
+                }`}
+              >
+                {projeto} ({itens.filter((item) => item.projeto === projeto).length})
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="mb-8 rounded-3xl bg-white p-6 shadow-md md:p-8">
+          <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-800">
+                {projetoSelecionado === "Todos" ? "Consulta e Controle" : `Projeto: ${projetoSelecionado}`}
+              </h2>
+              <p className="mt-1 text-slate-500">
+                Pesquise, edite, altere status ou remova itens.
+              </p>
+            </div>
+
             <input
-              className="w-full lg:w-96 border border-slate-200 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-400"
-              placeholder="Buscar por tag, nome, projeto, local ou status"
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar por tag, item, projeto, local ou status"
+              className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400 lg:w-96"
             />
           </div>
 
@@ -757,20 +435,20 @@ useEffect(() => {
             <table className="w-full text-sm">
               <thead className="bg-slate-100 text-slate-700">
                 <tr>
-                  <th className="text-left p-4 font-semibold">Tag</th>
-                  <th className="text-left p-4 font-semibold">Item</th>
-                  <th className="text-left p-4 font-semibold">Projeto</th>
-                  <th className="text-left p-4 font-semibold">Quantidade</th>
-                  <th className="text-left p-4 font-semibold">Localização</th>
-                  <th className="text-left p-4 font-semibold">Status</th>
-                  <th className="text-left p-4 font-semibold">Controle</th>
+                  <th className="p-4 text-left font-semibold">Tag</th>
+                  <th className="p-4 text-left font-semibold">Item</th>
+                  <th className="p-4 text-left font-semibold">Projeto</th>
+                  <th className="p-4 text-left font-semibold">Qtd.</th>
+                  <th className="p-4 text-left font-semibold">Localização</th>
+                  <th className="p-4 text-left font-semibold">Status</th>
+                  <th className="p-4 text-left font-semibold">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {itensFiltrados.length > 0 ? (
                   itensFiltrados.map((item) => (
-                    <tr key={item.id} className="border-t border-slate-200 hover:bg-slate-50 transition">
-                      <td className="p-4 font-bold text-blue-700">{item.codigo}</td>
+                    <tr key={item.id} className="border-t border-slate-200 hover:bg-slate-50">
+                      <td className="p-4 font-bold text-blue-700">{item.tag}</td>
                       <td className="p-4">
                         <p className="font-semibold text-slate-800">{item.nome}</p>
                         <p className="text-xs text-slate-500">{item.informacoes}</p>
@@ -779,25 +457,26 @@ useEffect(() => {
                       <td className="p-4 font-bold text-slate-700">{item.quantidade}</td>
                       <td className="p-4 text-slate-600">{item.localizacao}</td>
                       <td className="p-4">
-                        <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold border ${estiloStatus(item.status)}`}>
+                        <span className={`rounded-full border px-3 py-1 text-xs font-bold ${statusClasse(item.status)}`}>
                           {item.status}
                         </span>
                       </td>
                       <td className="p-4">
                         <div className="flex flex-wrap gap-2">
-                          <button onClick={() => editarItem(item)} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-xl text-xs font-semibold transition">Editar</button>
-                          <button onClick={() => setItemQRCode(item)} className="bg-violet-600 hover:bg-violet-700 text-white px-3 py-2 rounded-xl text-xs font-semibold transition">QR Code</button>
-                          <button onClick={() => alterarStatus(item.id, "Disponível")} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl text-xs font-semibold transition">Disponível</button>
-                          <button onClick={() => alterarStatus(item.id, "Em uso")} className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-xl text-xs font-semibold transition">Em uso</button>
-                          <button onClick={() => alterarStatus(item.id, "Manutenção")} className="bg-rose-600 hover:bg-rose-700 text-white px-3 py-2 rounded-xl text-xs font-semibold transition">Manutenção</button>
-                          <button onClick={() => removerItem(item.id)} className="bg-slate-700 hover:bg-slate-800 text-white px-3 py-2 rounded-xl text-xs font-semibold transition">Remover</button>
+                          <button onClick={() => editarItem(item)} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">Editar</button>
+                          <button onClick={() => alterarStatus(item, "Disponível")} className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700">Disponível</button>
+                          <button onClick={() => alterarStatus(item, "Em uso")} className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-600">Em uso</button>
+                          <button onClick={() => alterarStatus(item, "Manutenção")} className="rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700">Manutenção</button>
+                          <button onClick={() => removerItem(item)} className="rounded-xl bg-slate-700 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800">Remover</button>
                         </div>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="7" className="text-center p-10 text-slate-500">Nenhum item encontrado.</td>
+                    <td colSpan="7" className="p-10 text-center text-slate-500">
+                      Nenhum item encontrado.
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -805,23 +484,25 @@ useEffect(() => {
           </div>
         </section>
 
-        <section className="bg-white rounded-3xl shadow-md border border-slate-100 p-6 md:p-8">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-slate-800">Histórico de Movimentações</h2>
-            <p className="text-slate-500 mt-1">Últimas ações registradas no sistema.</p>
-          </div>
+        <section className="rounded-3xl bg-white p-6 shadow-md md:p-8">
+          <h2 className="text-2xl font-bold text-slate-800">
+            Histórico
+          </h2>
+          <p className="mt-1 text-slate-500">
+            Últimas ações feitas no sistema.
+          </p>
 
-          <div className="overflow-x-auto rounded-2xl border border-slate-200">
+          <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200">
             <table className="w-full text-sm">
               <thead className="bg-slate-100 text-slate-700">
                 <tr>
-                  <th className="text-left p-4 font-semibold">Data</th>
-                  <th className="text-left p-4 font-semibold">Tag</th>
-                  <th className="text-left p-4 font-semibold">Item</th>
-                  <th className="text-left p-4 font-semibold">Movimento</th>
-                  <th className="text-left p-4 font-semibold">Qtd.</th>
-                  <th className="text-left p-4 font-semibold">Responsável</th>
-                  <th className="text-left p-4 font-semibold">Observação</th>
+                  <th className="p-4 text-left font-semibold">Data</th>
+                  <th className="p-4 text-left font-semibold">Tag</th>
+                  <th className="p-4 text-left font-semibold">Item</th>
+                  <th className="p-4 text-left font-semibold">Tipo</th>
+                  <th className="p-4 text-left font-semibold">Qtd.</th>
+                  <th className="p-4 text-left font-semibold">Responsável</th>
+                  <th className="p-4 text-left font-semibold">Observação</th>
                 </tr>
               </thead>
               <tbody>
@@ -829,7 +510,7 @@ useEffect(() => {
                   historico.slice(0, 20).map((registro) => (
                     <tr key={registro.id} className="border-t border-slate-200 hover:bg-slate-50">
                       <td className="p-4 text-slate-600">{registro.data}</td>
-                      <td className="p-4 font-bold text-blue-700">{registro.codigo}</td>
+                      <td className="p-4 font-bold text-blue-700">{registro.tag}</td>
                       <td className="p-4 text-slate-700">{registro.item}</td>
                       <td className="p-4 font-semibold text-slate-800">{registro.tipo}</td>
                       <td className="p-4 text-slate-600">{registro.quantidade}</td>
@@ -839,91 +520,56 @@ useEffect(() => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="7" className="text-center p-10 text-slate-500">Nenhuma movimentação registrada.</td>
+                    <td colSpan="7" className="p-10 text-center text-slate-500">
+                      Nenhum registro no histórico.
+                    </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
         </section>
-
-        {itemQRCode && (
-          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative">
-              <button
-                onClick={() => setItemQRCode(null)}
-                className="absolute top-4 right-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full w-9 h-9 font-bold"
-              >
-                ×
-              </button>
-
-              <div className="print-area">
-                <div className="text-center mb-5">
-                  <p className="text-sm font-bold uppercase tracking-[0.2em] text-violet-600">
-                    QR Code do Item
-                  </p>
-                  <h2 className="text-2xl font-black text-slate-800 mt-2">
-                    {itemQRCode.nome}
-                  </h2>
-                  <p className="text-blue-700 font-bold mt-1">{itemQRCode.codigo}</p>
-                </div>
-
-                <div className="bg-white border border-slate-200 rounded-3xl p-6 flex justify-center mb-5">
-                  <QRCode value={gerarDadosQRCode(itemQRCode)} size={220} />
-                </div>
-
-                <div className="bg-slate-50 rounded-2xl p-4 text-sm text-slate-700 space-y-1">
-                  <p><strong>Projeto/Área:</strong> {itemQRCode.projeto}</p>
-                  <p><strong>Quantidade:</strong> {itemQRCode.quantidade}</p>
-                  <p><strong>Localização:</strong> {itemQRCode.localizacao || "Não informada"}</p>
-                  <p><strong>Status:</strong> {itemQRCode.status}</p>
-                  <p><strong>Informações:</strong> {itemQRCode.informacoes || "Sem informações adicionais"}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 mt-6 no-print">
-                <button
-                  onClick={imprimirQRCode}
-                  className="bg-violet-600 hover:bg-violet-700 text-white px-5 py-3 rounded-2xl font-semibold shadow-md transition"
-                >
-                  Imprimir
-                </button>
-                <button
-                  onClick={() => setItemQRCode(null)}
-                  className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-5 py-3 rounded-2xl font-semibold transition"
-                >
-                  Fechar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
-    </div>
+    </main>
   );
 }
 
-function Card({ titulo, valor, descricao, cor }) {
-  return (
-    <div className="bg-white rounded-3xl p-6 shadow-md border border-slate-100 hover:shadow-lg transition">
-      <p className="text-sm font-semibold text-slate-500">{titulo}</p>
-      <h2 className={`text-3xl font-black mt-2 ${cor}`}>{valor}</h2>
-      <p className="text-sm text-slate-400 mt-2">{descricao}</p>
-    </div>
-  );
-}
-
-function Campo({ label, placeholder, valor, onChange, tipo = "text" }) {
+function Campo({ label, valor, onChange, placeholder, tipo = "text" }) {
   return (
     <div>
-      <label className="block text-sm font-semibold text-slate-600 mb-2">{label}</label>
+      <label className="mb-2 block text-sm font-semibold text-slate-600">
+        {label}
+      </label>
+
       <input
         type={tipo}
-        className="w-full border border-slate-200 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition"
-        placeholder={placeholder}
         value={valor}
         onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400"
       />
     </div>
   );
+}
+
+function Card({ titulo, valor, texto }) {
+  return (
+    <div className="rounded-3xl bg-white p-6 shadow-md">
+      <p className="text-sm font-semibold text-slate-500">{titulo}</p>
+      <h2 className="mt-2 text-3xl font-black text-slate-800">{valor}</h2>
+      <p className="mt-2 text-sm text-slate-400">{texto}</p>
+    </div>
+  );
+}
+
+function statusClasse(status) {
+  if (status === "Disponível") {
+    return "border-emerald-200 bg-emerald-100 text-emerald-700";
+  }
+
+  if (status === "Em uso") {
+    return "border-amber-200 bg-amber-100 text-amber-700";
+  }
+
+  return "border-rose-200 bg-rose-100 text-rose-700";
 }
