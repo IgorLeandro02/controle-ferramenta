@@ -7,6 +7,13 @@ export default function App() {
   const [projetoSelecionado, setProjetoSelecionado] = useState("Todos");
   const [editandoId, setEditandoId] = useState(null);
   const [carregado, setCarregado] = useState(false);
+  const [movimentacao, setMovimentacao] = useState({
+  itemId: "",
+  tipo: "Retirada",
+  quantidade: "1",
+  responsavel: "",
+  observacao: "",
+});
 
   const formularioVazio = {
     nome: "",
@@ -198,6 +205,72 @@ export default function App() {
     });
   };
 
+  const registrarMovimentacao = () => {
+  if (!movimentacao.itemId || !movimentacao.quantidade || !movimentacao.responsavel) {
+    alert("Selecione o item, informe a quantidade e o responsável.");
+    return;
+  }
+
+  const itemSelecionado = itens.find(
+    (item) => item.id === Number(movimentacao.itemId)
+  );
+
+  if (!itemSelecionado) {
+    alert("Item não encontrado.");
+    return;
+  }
+
+  const quantidadeMovimentada = Number(movimentacao.quantidade);
+
+  if (quantidadeMovimentada <= 0) {
+    alert("A quantidade precisa ser maior que zero.");
+    return;
+  }
+
+  if (
+    movimentacao.tipo === "Retirada" &&
+    quantidadeMovimentada > itemSelecionado.quantidade
+  ) {
+    alert("Quantidade insuficiente em estoque.");
+    return;
+  }
+
+  const novaQuantidade =
+    movimentacao.tipo === "Retirada"
+      ? itemSelecionado.quantidade - quantidadeMovimentada
+      : itemSelecionado.quantidade + quantidadeMovimentada;
+
+  const novoStatus = novaQuantidade <= 0 ? "Em uso" : itemSelecionado.status;
+
+  setItens((itensAtuais) =>
+    itensAtuais.map((item) =>
+      item.id === itemSelecionado.id
+        ? {
+            ...item,
+            quantidade: novaQuantidade,
+            status: novoStatus,
+          }
+        : item
+    )
+  );
+
+  registrarHistorico({
+    item: itemSelecionado,
+    tipo: movimentacao.tipo,
+    quantidade: quantidadeMovimentada,
+    responsavel: movimentacao.responsavel,
+    observacao: movimentacao.observacao || "-",
+  });
+
+  setMovimentacao({
+    itemId: "",
+    tipo: "Retirada",
+    quantidade: "1",
+    responsavel: "",
+    observacao: "",
+  });
+};
+
   const exportarCSV = () => {
     if (itens.length === 0) {
       alert("Não existem itens para exportar.");
@@ -368,6 +441,92 @@ export default function App() {
             )}
           </div>
         </section>
+
+        <section className="mb-8 rounded-3xl bg-white p-6 shadow-md md:p-8">
+  <h2 className="text-2xl font-bold text-slate-800">
+    Retirada e Devolução
+  </h2>
+
+  <p className="mt-1 text-slate-500">
+    Registre movimentações para atualizar a quantidade dos itens.
+  </p>
+
+  <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+    <div>
+      <label className="mb-2 block text-sm font-semibold text-slate-600">
+        Item
+      </label>
+
+      <select
+        value={movimentacao.itemId}
+        onChange={(e) =>
+          setMovimentacao({ ...movimentacao, itemId: e.target.value })
+        }
+        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400"
+      >
+        <option value="">Selecione</option>
+
+        {itens.map((item) => (
+          <option key={item.id} value={item.id}>
+            {item.tag} - {item.nome}
+          </option>
+        ))}
+      </select>
+    </div>
+
+    <div>
+      <label className="mb-2 block text-sm font-semibold text-slate-600">
+        Tipo
+      </label>
+
+      <select
+        value={movimentacao.tipo}
+        onChange={(e) =>
+          setMovimentacao({ ...movimentacao, tipo: e.target.value })
+        }
+        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400"
+      >
+        <option>Retirada</option>
+        <option>Devolução</option>
+      </select>
+    </div>
+
+    <Campo
+      label="Quantidade"
+      tipo="number"
+      valor={movimentacao.quantidade}
+      placeholder="Ex: 1"
+      onChange={(valor) =>
+        setMovimentacao({ ...movimentacao, quantidade: valor })
+      }
+    />
+
+    <Campo
+      label="Responsável"
+      valor={movimentacao.responsavel}
+      placeholder="Ex: João Silva"
+      onChange={(valor) =>
+        setMovimentacao({ ...movimentacao, responsavel: valor })
+      }
+    />
+
+    <Campo
+      label="Observação"
+      valor={movimentacao.observacao}
+      placeholder="Ex: Uso no projeto X"
+      onChange={(valor) =>
+        setMovimentacao({ ...movimentacao, observacao: valor })
+      }
+    />
+  </div>
+
+  <button
+    onClick={registrarMovimentacao}
+    className="mt-6 rounded-2xl bg-emerald-600 px-6 py-3 font-semibold text-white shadow transition hover:bg-emerald-700"
+  >
+    Registrar movimentação
+  </button>
+</section>
 
         <section className="mb-8 rounded-3xl bg-white p-6 shadow-md md:p-8">
           <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
