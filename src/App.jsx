@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ExcelJS from "exceljs"
 
 export default function App() {
   const [itens, setItens] = useState([]);
@@ -271,6 +272,125 @@ export default function App() {
   });
 };
 
+  const gerarTagComLista = (lista, projeto) => {
+  const prefixo = gerarPrefixo(projeto);
+
+  const totalMesmoPrefixo = lista.filter(
+    (item) => gerarPrefixo(item.projeto) === prefixo
+  ).length;
+
+  return `${prefixo}-${String(totalMesmoPrefixo + 1).padStart(3, "0")}`;
+};
+
+const normalizarTexto = (valor) => {
+  if (valor === null || valor === undefined) return "";
+  return String(valor).trim();
+};
+
+const valorCelula = (cell) => {
+  if (!cell || cell.value === null || cell.value === undefined) return "";
+
+  if (typeof cell.value === "object") {
+    if (cell.value.text) return String(cell.value.text).trim();
+    if (cell.value.result) return String(cell.value.result).trim();
+    if (cell.value.richText) {
+      return cell.value.richText.map((parte) => parte.text).join("").trim();
+    }
+  }
+
+  return String(cell.value).trim();
+};
+
+const importarExcel = async (evento) => {
+  const arquivo = evento.target.files?.[0];
+
+  if (!arquivo) return;
+
+  try {
+    const workbook = new ExcelJS.Workbook();
+    const buffer = await arquivo.arrayBuffer();
+
+    await workbook.xlsx.load(buffer);
+
+    const abasParaImportar = [
+      "ESTOQUE GERAL",
+  
+    ];
+
+    let listaAtualizada = [...itens];
+    const novosItens = [];
+
+    abasParaImportar.forEach((nomeAba) => {
+      const planilha = workbook.getWorksheet(nomeAba);
+
+      if (!planilha) return;
+
+      planilha.eachRow((row, rowNumber) => {
+        // Linha 1 é título, linha 5 é cabeçalho.
+        // Os dados começam na linha 6.
+        if (rowNumber < 6) return;
+
+        const nome = valorCelula(row.getCell(1)); // Item/Equipamento
+        const categoria = valorCelula(row.getCell(2)); // Categoria
+        const projeto = valorCelula(row.getCell(3)); // Projeto/Grupo
+        const tagLab = valorCelula(row.getCell(4)); // Tag Lab
+        const quantidade = Number(valorCelula(row.getCell(5)) || 0); // Quantidade
+        const localizacao = valorCelula(row.getCell(6)); // Localização
+
+        // Ignora linhas vazias ou sem item.
+        if (!nome) return;
+
+        const projetoFinal = projeto || "Sem Projeto";
+
+        const novoItem = {
+          id: Date.now() + Math.random(),
+          tag: tagLab || gerarTagComLista(listaAtualizada, projetoFinal),
+          nome,
+          projeto: projetoFinal,
+          informacoes: categoria,
+          quantidade,
+          localizacao,
+          status: "Disponível",
+          criadoEm: dataAtual(),
+        };
+
+        listaAtualizada = [...listaAtualizada, novoItem];
+        novosItens.push(novoItem);
+      });
+    });
+
+    if (novosItens.length === 0) {
+      alert("Nenhum item válido foi encontrado na planilha.");
+      return;
+    }
+
+    setItens(listaAtualizada);
+
+    const registrosImportacao = novosItens.map((item) => ({
+      id: Date.now() + Math.random(),
+      data: dataAtual(),
+      tag: item.tag,
+      item: item.nome,
+      tipo: "Importação",
+      quantidade: item.quantidade,
+      responsavel: "Sistema",
+      observacao: "Item importado do Excel",
+    }));
+
+    setHistorico((historicoAtual) => [
+      ...registrosImportacao,
+      ...historicoAtual,
+    ]);
+
+    alert(`${novosItens.length} item(ns) importado(s) com sucesso.`);
+  } catch (erro) {
+    console.error(erro);
+    alert("Erro ao importar Excel. Verifique se o arquivo está em formato .xlsx.");
+  }
+
+  evento.target.value = "";
+};
+
   const exportarCSV = () => {
     if (itens.length === 0) {
       alert("Não existem itens para exportar.");
@@ -376,12 +496,24 @@ export default function App() {
               </p>
             </div>
 
-            <button
-              onClick={exportarCSV}
-              className="rounded-2xl bg-slate-900 px-5 py-3 font-semibold text-white shadow transition hover:bg-slate-800"
-            >
-              Exportar Excel/CSV
-            </button>
+            <div className="flex flex-wrap gap-3">
+  <label className="cursor-pointer rounded-2xl bg-emerald-600 px-5 py-3 font-semibold text-white shadow transition hover:bg-emerald-700">
+    Importar Excel
+    <input
+      type="file"
+      accept=".xlsx"
+      onChange={importarExcel}
+      className="hidden"
+    />
+  </label>
+
+  <button
+    onClick={exportarCSV}
+    className="rounded-2xl bg-slate-900 px-5 py-3 font-semibold text-white shadow transition hover:bg-slate-800"
+  >
+    Exportar Excel/CSV
+  </button>
+</div>
           </div>
         </header>
 
