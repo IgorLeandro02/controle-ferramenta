@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import ExcelJS from "exceljs"
+import QRCode from "react-qr-code";
 
 export default function App() {
   const [itens, setItens] = useState([]);
@@ -8,6 +9,7 @@ export default function App() {
   const [projetoSelecionado, setProjetoSelecionado] = useState("Todos");
   const [editandoId, setEditandoId] = useState(null);
   const [carregado, setCarregado] = useState(false);
+  const [itemQRCode, setItemQRCode] = useState(null);
   const [movimentacao, setMovimentacao] = useState({
   itemId: "",
   tipo: "Retirada",
@@ -197,6 +199,22 @@ export default function App() {
         i.id === item.id ? { ...i, status: novoStatus } : i
       )
     );
+
+    const gerarDadosQRCode = (item) => {
+  return [
+    `Tag: ${item.tag || "Sem tag"}`,
+    `Item: ${item.nome || "Sem nome"}`,
+    `Projeto/Área: ${item.projeto || "Sem projeto"}`,
+    `Quantidade: ${item.quantidade ?? 0}`,
+    `Localização: ${item.localizacao || "Não informada"}`,
+    `Status: ${item.status || "Não informado"}`,
+    `Informações: ${item.informacoes || "Sem informações adicionais"}`,
+  ].join("\n");
+};
+
+const imprimirQRCode = () => {
+  window.print();
+};
 
     registrarHistorico({
       item,
@@ -755,6 +773,7 @@ const importarExcel = async (evento) => {
                       <td className="p-4">
                         <div className="flex flex-wrap gap-2">
                           <button onClick={() => editarItem(item)} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">Editar</button>
+                          <button onClick={() => setItemQRCode(item)} className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-700" > QR Code </button>
                           <button onClick={() => alterarStatus(item, "Disponível")} className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700">Disponível</button>
                           <button onClick={() => alterarStatus(item, "Em uso")} className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-600">Em uso</button>
                           <button onClick={() => alterarStatus(item, "Manutenção")} className="rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700">Manutenção</button>
@@ -820,6 +839,74 @@ const importarExcel = async (evento) => {
             </table>
           </div>
         </section>
+        {itemQRCode && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4">
+    <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+      <button
+        onClick={() => setItemQRCode(null)}
+        className="absolute right-4 top-4 h-9 w-9 rounded-full bg-slate-100 font-bold text-slate-700 hover:bg-slate-200"
+      >
+        ×
+      </button>
+
+      <div className="print-area">
+        <div className="mb-5 text-center">
+          <p className="text-sm font-bold uppercase tracking-widest text-violet-600">
+            QR Code do Item
+          </p>
+
+          <h2 className="mt-2 text-2xl font-black text-slate-800">
+            {itemQRCode.nome}
+          </h2>
+
+          <p className="mt-1 font-bold text-blue-700">
+            {itemQRCode.tag}
+          </p>
+        </div>
+
+        <div className="mb-5 flex justify-center rounded-3xl border border-slate-200 bg-white p-6">
+          <QRCode value={gerarDadosQRCode(itemQRCode)} size={220} />
+        </div>
+
+        <div className="space-y-1 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
+          <p>
+            <strong>Projeto/Área:</strong> {itemQRCode.projeto}
+          </p>
+          <p>
+            <strong>Quantidade:</strong> {itemQRCode.quantidade}
+          </p>
+          <p>
+            <strong>Localização:</strong>{" "}
+            {itemQRCode.localizacao || "Não informada"}
+          </p>
+          <p>
+            <strong>Status:</strong> {itemQRCode.status}
+          </p>
+          <p>
+            <strong>Informações:</strong>{" "}
+            {itemQRCode.informacoes || "Sem informações adicionais"}
+          </p>
+        </div>
+      </div>
+
+      <div className="no-print mt-6 grid grid-cols-2 gap-3">
+        <button
+          onClick={imprimirQRCode}
+          className="rounded-2xl bg-violet-600 px-5 py-3 font-semibold text-white shadow transition hover:bg-violet-700"
+        >
+          Imprimir
+        </button>
+
+        <button
+          onClick={() => setItemQRCode(null)}
+          className="rounded-2xl bg-slate-200 px-5 py-3 font-semibold text-slate-700 transition hover:bg-slate-300"
+        >
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       </div>
     </main>
   );
