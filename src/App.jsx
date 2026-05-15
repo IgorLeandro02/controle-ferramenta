@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import ExcelJS from "exceljs"
-import QRCode from "react-qr-code";
+import { QRCodeSVG } from "qrcode.react";
 
 export default function App() {
   const [itens, setItens] = useState([]);
@@ -200,7 +200,15 @@ export default function App() {
       )
     );
 
-    const gerarDadosQRCode = (item) => {
+    registrarHistorico({
+      item,
+      tipo: "Status",
+      quantidade: item.quantidade,
+      observacao: `Status alterado para ${novoStatus}`,
+    });
+  };
+
+   const gerarDadosQRCode = (item) => {
   return [
     `Tag: ${item.tag || "Sem tag"}`,
     `Item: ${item.nome || "Sem nome"}`,
@@ -215,14 +223,6 @@ export default function App() {
 const imprimirQRCode = () => {
   window.print();
 };
-
-    registrarHistorico({
-      item,
-      tipo: "Status",
-      quantidade: item.quantidade,
-      observacao: `Status alterado para ${novoStatus}`,
-    });
-  };
 
   const registrarMovimentacao = () => {
   if (!movimentacao.itemId || !movimentacao.quantidade || !movimentacao.responsavel) {
@@ -865,7 +865,7 @@ const importarExcel = async (evento) => {
         </div>
 
         <div className="mb-5 flex justify-center rounded-3xl border border-slate-200 bg-white p-6">
-          <QRCode value={gerarDadosQRCode(itemQRCode)} size={220} />
+          <QRCodeSVG value={gerarDadosQRCode(itemQRCode)} size={220} />
         </div>
 
         <div className="space-y-1 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
