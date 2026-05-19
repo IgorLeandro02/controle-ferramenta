@@ -573,12 +573,12 @@ const importarExcel = async (evento) => {
   ).length;
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-[#174A9C] via-white to-[#F05A28] p-4 md:p-8">
+   <main className="min-h-screen bg-gradient-to-br from-[#174A9C] via-white to-[#F05A28] p-4 md:p-8">
       <div className="mx-auto max-w-7xl">
         <header className="mb-8 rounded-3xl bg-white p-6 shadow-md md:p-8">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-sm font-bold uppercase tracking-widest text-blue-600">
+              <p className="text-sm font-bold uppercase tracking-widest text-[#F05A28]">
                 Sistema Interno
               </p>
               <h1 className="mt-2 text-3xl font-black text-slate-800 md:text-5xl">
@@ -590,7 +590,7 @@ const importarExcel = async (evento) => {
             </div>
 
             <div className="flex flex-wrap gap-3">
-  <label className="cursor-pointer rounded-2xl bg-emerald-600 px-5 py-3 font-semibold text-white shadow transition hover:bg-emerald-700">
+  <label className="cursor-pointer rounded-2xl bg-[#F05A28] px-5 py-3 font-semibold text-white shadow transition hover:bg-[#D94A1F]">
     Importar Excel
     <input
       type="file"
@@ -602,7 +602,7 @@ const importarExcel = async (evento) => {
 
   <button
     onClick={exportarCSV}
-    className="rounded-2xl bg-slate-900 px-5 py-3 font-semibold text-white shadow transition hover:bg-slate-800"
+    className="rounded-2xl bg-[#174A9C] px-5 py-3 font-semibold text-white shadow transition hover:bg-[#123A7A]"
   >
     Exportar Excel/CSV
   </button>
@@ -639,7 +639,7 @@ const importarExcel = async (evento) => {
               <select
                 value={formulario.status}
                 onChange={(e) => setFormulario({ ...formulario, status: e.target.value })}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-[#174A9C] focus:ring-2 focus:ring-[#174A9C]"
               >
                 <option>Disponível</option>
                 <option>Em uso</option>
@@ -651,7 +651,7 @@ const importarExcel = async (evento) => {
           <div className="mt-6 flex flex-wrap gap-3">
             <button
               onClick={salvarItem}
-              className="rounded-2xl bg-blue-600 px-6 py-3 font-semibold text-white shadow transition hover:bg-blue-700"
+              className="rounded-2xl bg-[#174A9C] px-6 py-3 font-semibold text-white shadow transition hover:bg-[#123A7A]"
             >
               {editandoId ? "Salvar Alterações" : "Cadastrar item"}
             </button>
@@ -687,7 +687,7 @@ const importarExcel = async (evento) => {
         onChange={(e) =>
           setMovimentacao({ ...movimentacao, itemId: e.target.value })
         }
-        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400"
+        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-[#174A9C] focus:ring-2 focus:ring-[#174A9C]"
       >
         <option value="">Selecione</option>
 
@@ -709,7 +709,7 @@ const importarExcel = async (evento) => {
         onChange={(e) =>
           setMovimentacao({ ...movimentacao, tipo: e.target.value })
         }
-        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400"
+        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-[#174A9C] focus:ring-2 focus:ring-[#174A9C]"
       >
         <option>Retirada</option>
         <option>Devolução</option>
@@ -764,7 +764,7 @@ const importarExcel = async (evento) => {
               </p>
             </div>
             <div className="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-600">
-              Selecionado: <strong className="text-blue-700">{projetoSelecionado}</strong>
+              Selecionado: <strong className="text-[#174A9C]">{projetoSelecionado}</strong>
             </div>
           </div>
 
@@ -773,7 +773,7 @@ const importarExcel = async (evento) => {
               onClick={() => setProjetoSelecionado("Todos")}
               className={`rounded-2xl px-5 py-3 font-semibold transition ${
                 projetoSelecionado === "Todos"
-                  ? "bg-blue-600 text-white"
+                  ? "bg-[#174A9C] text-white"
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200"
               }`}
             >
@@ -786,8 +786,8 @@ const importarExcel = async (evento) => {
                 onClick={() => setProjetoSelecionado(projeto)}
                 className={`rounded-2xl px-5 py-3 font-semibold transition ${
                   projetoSelecionado === projeto
-                    ? "bg-blue-600 text-white"
-                    : "border border-slate-200 bg-white text-slate-700 hover:bg-blue-50"
+                    ? "bg-[#174A9C] text-white"
+                    : "border border-slate-200 bg-white text-slate-700 hover:bg-orange-50"
                 }`}
               >
                 {projeto} ({itens.filter((item) => item.projeto === projeto).length})
@@ -811,7 +811,7 @@ const importarExcel = async (evento) => {
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder="Buscar por tag, item, projeto, local ou status"
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400 lg:w-96"
+              className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-[#174A9C] focus:ring-2 focus:ring-[#174A9C] lg:w-96"
             />
           </div>
 
@@ -832,7 +832,7 @@ const importarExcel = async (evento) => {
                 {itensFiltrados.length > 0 ? (
                   itensFiltrados.map((item) => (
                     <tr key={item.id} className="border-t border-slate-200 hover:bg-slate-50">
-                      <td className="p-4 font-bold text-blue-700">{item.tag}</td>
+                      <td className="p-4 font-bold text-[#174A9C]">{item.tag}</td>
                       <td className="p-4">
                         <p className="font-semibold text-slate-800">{item.nome}</p>
                         <p className="text-xs text-slate-500">{item.informacoes}</p>
@@ -847,8 +847,8 @@ const importarExcel = async (evento) => {
                       </td>
                       <td className="p-4">
                         <div className="flex flex-wrap gap-2">
-                          <button onClick={() => editarItem(item)} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">Editar</button>
-                          <button onClick={() => setItemQRCode(item)} className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-700" > QR Code </button>
+                          <button onClick={() => editarItem(item)} className="rounded-xl bg-[#174A9C] px-3 py-2 text-xs font-semibold text-white hover:bg-[#123A7A]">Editar</button>
+                          <button onClick={() => setItemQRCode(item)} className="rounded-xl bg-[#F05A28] px-3 py-2 text-xs font-semibold text-white hover:bg-[#D94A1F]" > QR Code </button>
                           <button onClick={() => alterarStatus(item, "Disponível")} className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700">Disponível</button>
                           <button onClick={() => alterarStatus(item, "Em uso")} className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-600">Em uso</button>
                           <button onClick={() => alterarStatus(item, "Manutenção")} className="rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700">Manutenção</button>
@@ -895,7 +895,7 @@ const importarExcel = async (evento) => {
                   historico.slice(0, 20).map((registro) => (
                     <tr key={registro.id} className="border-t border-slate-200 hover:bg-slate-50">
                       <td className="p-4 text-slate-600">{registro.data}</td>
-                      <td className="p-4 font-bold text-blue-700">{registro.tag}</td>
+                      <td className="p-4 font-bold text-[#174A9C]">{registro.tag}</td>
                       <td className="p-4 text-slate-700">{registro.item}</td>
                       <td className="p-4 font-semibold text-slate-800">{registro.tipo}</td>
                       <td className="p-4 text-slate-600">{registro.quantidade}</td>
@@ -926,7 +926,7 @@ const importarExcel = async (evento) => {
 
       <div className="print-area etiqueta-print">
         <div className="mb-5 text-center">
-          <p className="text-sm font-bold uppercase tracking-widest text-violet-600">
+          <p className="text-sm font-bold uppercase tracking-widest text-[#F05A28]">
             QR Code do Item
           </p>
 
@@ -934,7 +934,7 @@ const importarExcel = async (evento) => {
             {itemQRCode.nome}
           </h2>
 
-          <p className="mt-1 font-bold text-blue-700">
+          <p className="mt-1 font-bold text-[#174A9C]">
             {itemQRCode.tag}
           </p>
         </div>
@@ -957,7 +957,7 @@ const importarExcel = async (evento) => {
       <div className="no-print mt-6 grid grid-cols-2 gap-3">
         <button
           onClick={imprimirQRCode}
-          className="rounded-2xl bg-violet-600 px-5 py-3 font-semibold text-white shadow transition hover:bg-violet-700"
+          className="rounded-2xl bg-[#F05A28] px-5 py-3 font-semibold text-white shadow transition hover:bg-[#D94A1F]"
         >
           Imprimir
         </button>
@@ -989,7 +989,7 @@ function Campo({ label, valor, onChange, placeholder, tipo = "text" }) {
         value={valor}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400"
+        className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-[#174A9C] focus:ring-2 focus:ring-[#174A9C]"
       />
     </div>
   );
