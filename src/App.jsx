@@ -221,7 +221,82 @@ export default function App() {
 };
 
 const imprimirQRCode = () => {
-  window.print();
+  const etiqueta = document.querySelector(".etiqueta-print");
+
+  if (!etiqueta) {
+    alert("Etiqueta não encontrada para impressão.");
+    return;
+  }
+
+  const janelaImpressao = window.open("", "_blank", "width=500,height=400");
+
+  janelaImpressao.document.write(`
+    <html>
+      <head>
+        <title>Etiqueta QR Code</title>
+        <style>
+          @page {
+            size: 70mm 45mm;
+            margin: 0;
+          }
+
+          html,
+          body {
+            width: 70mm;
+            height: 45mm;
+            margin: 0;
+            padding: 0;
+            background: white;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+          }
+
+          .etiqueta {
+            width: 70mm;
+            height: 45mm;
+            box-sizing: border-box;
+            padding: 4mm;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+          }
+
+          .etiqueta svg {
+            width: 28mm !important;
+            height: 28mm !important;
+            display: block;
+            margin: 2mm auto;
+          }
+
+          .etiqueta p {
+            margin: 1mm 0;
+            font-size: 10px;
+          }
+
+          .etiqueta h2 {
+            margin: 1mm 0;
+            font-size: 16px;
+          }
+        </style>
+      </head>
+
+      <body>
+        <div class="etiqueta">
+          ${etiqueta.innerHTML}
+        </div>
+      </body>
+    </html>
+  `);
+
+  janelaImpressao.document.close();
+
+  setTimeout(() => {
+    janelaImpressao.focus();
+    janelaImpressao.print();
+    janelaImpressao.close();
+  }, 500);
 };
 
   const registrarMovimentacao = () => {
@@ -498,7 +573,7 @@ const importarExcel = async (evento) => {
   ).length;
 
   return (
-    <main className="min-h-screen bg-slate-100 p-4 md:p-8">
+    <main className="min-h-screen bg-gradient-to-br from-[#174A9C] via-white to-[#F05A28] p-4 md:p-8">
       <div className="mx-auto max-w-7xl">
         <header className="mb-8 rounded-3xl bg-white p-6 shadow-md md:p-8">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -849,7 +924,7 @@ const importarExcel = async (evento) => {
         ×
       </button>
 
-      <div className="print-area">
+      <div className="print-area etiqueta-print">
         <div className="mb-5 text-center">
           <p className="text-sm font-bold uppercase tracking-widest text-violet-600">
             QR Code do Item
@@ -865,28 +940,18 @@ const importarExcel = async (evento) => {
         </div>
 
         <div className="mb-5 flex justify-center rounded-3xl border border-slate-200 bg-white p-6">
-          <QRCodeSVG value={gerarDadosQRCode(itemQRCode)} size={220} />
+          <QRCodeSVG value={gerarDadosQRCode(itemQRCode)} size={145} />
         </div>
 
-        <div className="space-y-1 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
-          <p>
-            <strong>Projeto/Área:</strong> {itemQRCode.projeto}
-          </p>
-          <p>
-            <strong>Quantidade:</strong> {itemQRCode.quantidade}
-          </p>
-          <p>
-            <strong>Localização:</strong>{" "}
-            {itemQRCode.localizacao || "Não informada"}
-          </p>
-          <p>
-            <strong>Status:</strong> {itemQRCode.status}
-          </p>
-          <p>
-            <strong>Informações:</strong>{" "}
-            {itemQRCode.informacoes || "Sem informações adicionais"}
-          </p>
-        </div>
+        <div className="text-center text-[10px] text-slate-600">
+  <p>
+    <strong>Local:</strong> {itemQRCode.localizacao || "Não informada"}
+  </p>
+
+  <p>
+    <strong>Status:</strong> {itemQRCode.status}
+  </p>
+</div>
       </div>
 
       <div className="no-print mt-6 grid grid-cols-2 gap-3">
