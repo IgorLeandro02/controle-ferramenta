@@ -7,6 +7,7 @@ export default function App() {
   const [historico, setHistorico] = useState([]);
   const [busca, setBusca] = useState("");
   const [projetoSelecionado, setProjetoSelecionado] = useState("Todos");
+  const [abaAtiva, setAbaAtiva] = useState("inicio");
   const [editandoId, setEditandoId] = useState(null);
   const [carregado, setCarregado] = useState(false);
   const [itemQRCode, setItemQRCode] = useState(null);
@@ -584,11 +585,63 @@ const importarExcel = async (evento) => {
               <h1 className="mt-2 text-3xl font-black text-slate-800 md:text-5xl">
                 Controle de Ferramentas
               </h1>
-              <p className="mt-2 text-slate-500">
-                Cadastro, consulta, projeto, localização, status e histórico.
-              </p>
-            </div>
+              <div className="mt-5 flex flex-wrap gap-3">
+  <button
+    onClick={() => setAbaAtiva("inicio")}
+    className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+      abaAtiva === "inicio"
+        ? "bg-[#174A9C] text-white"
+        : "bg-slate-100 text-slate-700 hover:bg-orange-50"
+    }`}
+  >
+    Início
+  </button>
 
+  <button
+    onClick={() => setAbaAtiva("cadastro")}
+    className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+      abaAtiva === "cadastro"
+        ? "bg-[#174A9C] text-white"
+        : "bg-slate-100 text-slate-700 hover:bg-orange-50"
+    }`}
+  >
+    Cadastro
+  </button>
+
+  <button
+    onClick={() => setAbaAtiva("movimentacao")}
+    className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+      abaAtiva === "movimentacao"
+        ? "bg-[#174A9C] text-white"
+        : "bg-slate-100 text-slate-700 hover:bg-orange-50"
+    }`}
+  >
+    Retirada e Devolução
+  </button>
+
+  <button
+    onClick={() => setAbaAtiva("consulta")}
+    className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+      abaAtiva === "consulta"
+        ? "bg-[#174A9C] text-white"
+        : "bg-slate-100 text-slate-700 hover:bg-orange-50"
+    }`}
+  >
+    Consulta
+  </button>
+
+  <button
+    onClick={() => setAbaAtiva("historico")}
+    className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+      abaAtiva === "historico"
+        ? "bg-[#174A9C] text-white"
+        : "bg-slate-100 text-slate-700 hover:bg-orange-50"
+    }`}
+  >
+    Histórico
+  </button>
+</div>
+</div>
             <div className="flex flex-wrap gap-3">
   <label className="cursor-pointer rounded-2xl bg-[#F05A28] px-5 py-3 font-semibold text-white shadow transition hover:bg-[#D94A1F]">
     Importar Excel
@@ -609,14 +662,16 @@ const importarExcel = async (evento) => {
 </div>
           </div>
         </header>
-
+        
+        {abaAtiva === "inicio" && (
         <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Card titulo="Quantidade Total" valor={totalQuantidade} texto="Soma das unidades" />
           <Card titulo="Ferramentas" valor={itens.length} texto="Itens cadastrados" />
           <Card titulo="Disponíveis" valor={totalDisponiveis} texto="Prontas para uso" />
           <Card titulo="Em Uso / Manutenção" valor={totalEmUso + totalManutencao} texto="Itens controlados" />
         </section>
-
+        )}
+        {abaAtiva === "cadastro" && (
         <section className="mb-8 rounded-3xl bg-white p-6 shadow-md md:p-8">
           <h2 className="text-2xl font-bold text-slate-800">
             {editandoId ? "Editar Ferramenta" : "Cadastro de Ferramentas"}
@@ -666,7 +721,8 @@ const importarExcel = async (evento) => {
             )}
           </div>
         </section>
-
+        )}
+        {abaAtiva === "movimentacao" && (
         <section className="mb-8 rounded-3xl bg-white p-6 shadow-md md:p-8">
   <h2 className="text-2xl font-bold text-slate-800">
     Retirada e Devolução
@@ -752,58 +808,61 @@ const importarExcel = async (evento) => {
     Registrar movimentação
   </button>
 </section>
-
-        <section className="mb-8 rounded-3xl bg-white p-6 shadow-md md:p-8">
-          <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-800">
-                Projetos Cadastrados
-              </h2>
-              <p className="mt-1 text-slate-500">
-                Clique em um projeto para visualizar apenas os itens dele.
-              </p>
-            </div>
-            <div className="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-600">
-              Selecionado: <strong className="text-[#174A9C]">{projetoSelecionado}</strong>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={() => setProjetoSelecionado("Todos")}
-              className={`rounded-2xl px-5 py-3 font-semibold transition ${
-                projetoSelecionado === "Todos"
-                  ? "bg-[#174A9C] text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-              }`}
-            >
-              Todos ({itens.length})
-            </button>
-
-            {projetos.map((projeto) => (
-              <button
-                key={projeto}
-                onClick={() => setProjetoSelecionado(projeto)}
-                className={`rounded-2xl px-5 py-3 font-semibold transition ${
-                  projetoSelecionado === projeto
-                    ? "bg-[#174A9C] text-white"
-                    : "border border-slate-200 bg-white text-slate-700 hover:bg-orange-50"
-                }`}
-              >
-                {projeto} ({itens.filter((item) => item.projeto === projeto).length})
-              </button>
-            ))}
-          </div>
-        </section>
-
+        )}
+        {abaAtiva === "consulta" && (
         <section className="mb-8 rounded-3xl bg-white p-6 shadow-md md:p-8">
           <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
+              <div className="mb-6 rounded-2xl bg-slate-50 p-4">
+  <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+    <div>
+      <h3 className="text-lg font-bold text-slate-800">
+        Filtrar por Projeto
+      </h3>
+
+      <p className="text-sm text-slate-500">
+        Escolha um projeto para visualizar somente os itens vinculados a ele.
+      </p>
+    </div>
+
+    <div className="rounded-xl bg-white px-4 py-2 text-sm text-slate-600 shadow-sm">
+      Selecionado:{" "}
+      <strong className="text-[#174A9C]">{projetoSelecionado}</strong>
+    </div>
+  </div>
+
+  <div className="flex flex-wrap gap-3">
+    <button
+      onClick={() => setProjetoSelecionado("Todos")}
+      className={`rounded-2xl px-5 py-3 font-semibold transition ${
+        projetoSelecionado === "Todos"
+          ? "bg-[#174A9C] text-white"
+          : "bg-white text-slate-700 hover:bg-orange-50"
+      }`}
+    >
+      Todos ({itens.length})
+    </button>
+
+    {projetos.map((projeto) => (
+      <button
+        key={projeto}
+        onClick={() => setProjetoSelecionado(projeto)}
+        className={`rounded-2xl px-5 py-3 font-semibold transition ${
+          projetoSelecionado === projeto
+            ? "bg-[#174A9C] text-white"
+            : "border border-slate-200 bg-white text-slate-700 hover:bg-orange-50"
+        }`}
+      >
+        {projeto} ({itens.filter((item) => item.projeto === projeto).length})
+      </button>
+    ))}
+  </div>
+</div>
               <h2 className="text-2xl font-bold text-slate-800">
-                {projetoSelecionado === "Todos" ? "Consulta e Controle" : `Projeto: ${projetoSelecionado}`}
+                {projetoSelecionado === "Todos" ? "Consulta e Controle" : `Consulta do Projeto ou Área: ${projetoSelecionado}`}
               </h2>
               <p className="mt-1 text-slate-500">
-                Pesquise, edite, altere status ou remova itens.
+                Pesquise, Filtre por projetos, edite, altere status ou remova itens.
               </p>
             </div>
 
@@ -868,7 +927,8 @@ const importarExcel = async (evento) => {
             </table>
           </div>
         </section>
-
+        )}
+        {abaAtiva === "historico" && (
         <section className="rounded-3xl bg-white p-6 shadow-md md:p-8">
           <h2 className="text-2xl font-bold text-slate-800">
             Histórico
@@ -914,6 +974,8 @@ const importarExcel = async (evento) => {
             </table>
           </div>
         </section>
+        )}
+
         {itemQRCode && (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4">
     <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
