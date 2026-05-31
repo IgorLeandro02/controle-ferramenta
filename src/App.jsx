@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import ExcelJS from "exceljs"
 import { QRCodeSVG } from "qrcode.react";
 
+
 export default function App() {
   const [itens, setItens] = useState([]);
   const [historico, setHistorico] = useState([]);
@@ -580,7 +581,7 @@ const importarExcel = async (evento) => {
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-sm font-bold uppercase tracking-widest text-[#F05A28]">
-                Sistema Interno
+                Sistema De Controle Interno
               </p>
               <h1 className="mt-2 text-3xl font-black text-slate-800 md:text-5xl">
                 Controle de Ferramentas
