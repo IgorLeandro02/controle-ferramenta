@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import ExcelJS from "exceljs"
 import { QRCodeSVG } from "qrcode.react";
-
+import { supabase } from "./supabaseClient";
 
 export default function App() {
   const [itens, setItens] = useState([]);
@@ -12,6 +12,13 @@ export default function App() {
   const [editandoId, setEditandoId] = useState(null);
   const [carregado, setCarregado] = useState(false);
   const [itemQRCode, setItemQRCode] = useState(null);
+  
+  const [usuario, setUsuario] = useState(null);
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+
+  const adminLogado = !!usuario;
+  
   const [movimentacao, setMovimentacao] = useState({
   itemId: "",
   tipo: "Retirada",
@@ -28,30 +35,67 @@ export default function App() {
     localizacao: "",
     status: "Disponível",
   };
+  
+  const fazerLogin = async () => {
+  if (!email || !senha) {
+    alert("Informe usuário e senha.");
+    return;
+  }
 
+  const usuarioDigitado = email.trim().toLowerCase();
+
+  const emailLogin =
+    usuarioDigitado === "admin"
+      ? "admin@sistema.local"
+      : usuarioDigitado;
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: emailLogin,
+    password: senha,
+  });
+
+  if (error) {
+    console.error("Erro ao fazer login:", error);
+    alert("Usuário ou senha inválidos.");
+    return;
+  }
+
+  setUsuario(data.user);
+  setEmail("");
+  setSenha("");
+};
   const [formulario, setFormulario] = useState(formularioVazio);
 
   useEffect(() => {
-    const itensSalvos = localStorage.getItem("controleFerramentas_itens");
-    const historicoSalvo = localStorage.getItem("controleFerramentas_historico");
+  const carregarDados = async () => {
+    const { data: itensData, error: itensError } = await supabase
+      .from("itens")
+      .select("*")
+      .order("criado_em", { ascending: false });
 
-    if (itensSalvos) setItens(JSON.parse(itensSalvos));
-    if (historicoSalvo) setHistorico(JSON.parse(historicoSalvo));
+    const { data: historicoData, error: historicoError } = await supabase
+      .from("historico")
+      .select("*")
+      .order("data", { ascending: false });
+
+    if (itensError) {
+      console.error("Erro ao carregar itens:", itensError);
+    } else {
+      setItens(itensData || []);
+    }
+
+    if (historicoError) {
+      console.error("Erro ao carregar histórico:", historicoError);
+    } else {
+      setHistorico(historicoData || []);
+    }
 
     setCarregado(true);
-  }, []);
+  };
 
-  useEffect(() => {
-    if (carregado) {
-      localStorage.setItem("controleFerramentas_itens", JSON.stringify(itens));
-    }
-  }, [itens, carregado]);
+  carregarDados();
+}, []);
 
-  useEffect(() => {
-    if (carregado) {
-      localStorage.setItem("controleFerramentas_historico", JSON.stringify(historico));
-    }
-  }, [historico, carregado]);
 
   const dataAtual = () => new Date().toLocaleString("pt-BR");
 
@@ -115,101 +159,102 @@ export default function App() {
     setEditandoId(null);
   };
 
-  const salvarItem = () => {
-    if (!formulario.nome || !formulario.projeto || !formulario.quantidade) {
-      alert("Preencha nome, projeto/área e quantidade.");
-      return;
-    }
+  const salvarItem = async () => {
+  if (!formulario.nome || !formulario.projeto || !formulario.quantidade) {
+    alert("Preencha nome, projeto/área e quantidade.");
+    return;
+  }
 
-    if (Number(formulario.quantidade) < 0) {
-      alert("A quantidade não pode ser negativa.");
-      return;
-    }
+  if (Number(formulario.quantidade) < 0) {
+    alert("A quantidade não pode ser negativa.");
+    return;
+  }
 
-    if (editandoId) {
-      setItens((itensAtuais) =>
-        itensAtuais.map((item) =>
-          item.id === editandoId
-            ? {
-                ...item,
-                ...formulario,
-                quantidade: Number(formulario.quantidade),
-              }
-            : item
-        )
-      );
-
-      limparFormulario();
-      return;
-    }
-
-    const novoItem = {
-      id: Date.now() + Math.random(),
-      tag: gerarTag(formulario.projeto),
+  if (editandoId) {
+    const itemAtualizado = {
       nome: formulario.nome,
       projeto: formulario.projeto,
       informacoes: formulario.informacoes,
       quantidade: Number(formulario.quantidade),
       localizacao: formulario.localizacao,
       status: formulario.status,
-      criadoEm: dataAtual(),
     };
 
-    setItens((itensAtuais) => [...itensAtuais, novoItem]);
+    const { data, error } = await supabase
+      .from("itens")
+      .update(itemAtualizado)
+      .eq("id", editandoId)
+      .select();
 
-    registrarHistorico({
-      item: novoItem,
-      tipo: "Cadastro",
-      quantidade: novoItem.quantidade,
-      observacao: "Item cadastrado no sistema",
-    });
+    if (error) {
+      console.error("Erro ao editar item:", error);
+      alert("Erro ao editar item no banco de dados.");
+      return;
+    }
 
-    limparFormulario();
-  };
+    const itemSalvo = data[0];
 
-  const editarItem = (item) => {
-    setEditandoId(item.id);
-    setFormulario({
-      nome: item.nome,
-      projeto: item.projeto,
-      informacoes: item.informacoes,
-      quantidade: String(item.quantidade),
-      localizacao: item.localizacao,
-      status: item.status,
-    });
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const removerItem = (item) => {
-    const confirmar = confirm(`Deseja remover ${item.nome}?`);
-    if (!confirmar) return;
-
-    setItens((itensAtuais) => itensAtuais.filter((i) => i.id !== item.id));
-
-    registrarHistorico({
-      item,
-      tipo: "Remoção",
-      quantidade: item.quantidade,
-      observacao: "Item removido do sistema",
-    });
-  };
-
-  const alterarStatus = (item, novoStatus) => {
     setItens((itensAtuais) =>
-      itensAtuais.map((i) =>
-        i.id === item.id ? { ...i, status: novoStatus } : i
+      itensAtuais.map((item) =>
+        item.id === editandoId ? itemSalvo : item
       )
     );
 
-    registrarHistorico({
-      item,
-      tipo: "Status",
-      quantidade: item.quantidade,
-      observacao: `Status alterado para ${novoStatus}`,
-    });
+    limparFormulario();
+    return;
+  }
+
+  const novoItem = {
+    tag: gerarTag(formulario.projeto),
+    nome: formulario.nome,
+    projeto: formulario.projeto,
+    informacoes: formulario.informacoes,
+    quantidade: Number(formulario.quantidade),
+    localizacao: formulario.localizacao,
+    status: formulario.status,
   };
 
+  const { data, error } = await supabase
+    .from("itens")
+    .insert([novoItem])
+    .select();
+
+  if (error) {
+    console.error("Erro ao cadastrar item:", error);
+    alert("Erro ao cadastrar item no banco de dados.");
+    return;
+  }
+
+  const itemSalvo = data[0];
+
+  setItens((itensAtuais) => [itemSalvo, ...itensAtuais]);
+
+  const novoHistorico = {
+    tag: itemSalvo.tag,
+    item: itemSalvo.nome,
+    tipo: "Cadastro",
+    quantidade: itemSalvo.quantidade,
+    responsavel: "Sistema",
+    observacao: "Item cadastrado no sistema",
+  };
+
+  const { data: historicoSalvo, error: historicoError } = await supabase
+    .from("historico")
+    .insert([novoHistorico])
+    .select();
+
+  if (historicoError) {
+    console.error("Erro ao salvar histórico:", historicoError);
+  } else {
+    setHistorico((historicoAtual) => [
+      historicoSalvo[0],
+      ...historicoAtual,
+    ]);
+  }
+
+  limparFormulario();
+};
+  
    const gerarDadosQRCode = (item) => {
   return [
     `Tag: ${item.tag || "Sem tag"}`,
@@ -587,18 +632,12 @@ const importarExcel = async (evento) => {
                 Controle de Ferramentas
               </h1>
               <div className="mt-5 flex flex-wrap gap-3">
-  <button
-    onClick={() => setAbaAtiva("inicio")}
-    className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
-      abaAtiva === "inicio"
-        ? "bg-[#174A9C] text-white"
-        : "bg-slate-100 text-slate-700 hover:bg-orange-50"
-    }`}
-  >
-    Início
-  </button>
+  
+{adminLogado  && (
 
-  <button
+<>
+
+<button
     onClick={() => setAbaAtiva("cadastro")}
     className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
       abaAtiva === "cadastro"
@@ -608,6 +647,7 @@ const importarExcel = async (evento) => {
   >
     Cadastro
   </button>
+
 
   <button
     onClick={() => setAbaAtiva("movimentacao")}
@@ -619,6 +659,23 @@ const importarExcel = async (evento) => {
   >
     Retirada e Devolução
   </button>
+
+
+</>
+
+)  }
+
+<button
+    onClick={() => setAbaAtiva("inicio")}
+    className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+      abaAtiva === "inicio"
+        ? "bg-[#174A9C] text-white"
+        : "bg-slate-100 text-slate-700 hover:bg-orange-50"
+    }`}
+  >
+    Início
+  </button>
+
 
   <button
     onClick={() => setAbaAtiva("consulta")}
@@ -643,24 +700,53 @@ const importarExcel = async (evento) => {
   </button>
 </div>
 </div>
-            <div className="flex flex-wrap gap-3">
-  <label className="cursor-pointer rounded-2xl bg-[#F05A28] px-5 py-3 font-semibold text-white shadow transition hover:bg-[#D94A1F]">
-    Importar Excel
-    <input
-      type="file"
-      accept=".xlsx"
-      onChange={importarExcel}
-      className="hidden"
-    />
-  </label>
+          
+    {adminLogado && (
+  <div className="flex flex-wrap gap-3">
+    <label className="cursor-pointer rounded-2xl bg-[#F05A28] px-5 py-3 font-semibold text-white shadow transition hover:bg-[#D94A1F]">
+      Importar Excel
+      <input
+        type="file"
+        accept=".xlsx"
+        onChange={importarExcel}
+        className="hidden"
+      />
+    </label>
 
-  <button
-    onClick={exportarCSV}
-    className="rounded-2xl bg-[#174A9C] px-5 py-3 font-semibold text-white shadow transition hover:bg-[#123A7A]"
-  >
-    Exportar Excel/CSV
-  </button>
-</div>
+    <button
+      onClick={exportarCSV}
+      className="rounded-2xl bg-[#174A9C] px-5 py-3 font-semibold text-white shadow transition hover:bg-[#123A7A]"
+    >
+      Exportar Excel/CSV
+    </button>
+  </div>
+)}
+
+{!adminLogado && (
+  <div className="flex flex-wrap gap-3">
+    <input
+      value={email}
+      onChange={(e) => setEmail(e.target.value)}
+      placeholder="Usuário"
+      className="rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-[#174A9C] focus:ring-2 focus:ring-[#174A9C]"
+    />
+
+    <input
+      type="password"
+      value={senha}
+      onChange={(e) => setSenha(e.target.value)}
+      placeholder="Senha"
+      className="rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-[#174A9C] focus:ring-2 focus:ring-[#174A9C]"
+    />
+
+    <button
+      onClick={fazerLogin}
+      className="rounded-2xl bg-[#174A9C] px-5 py-3 font-semibold text-white shadow transition hover:bg-[#123A7A]"
+    >
+      Entrar
+    </button>
+  </div>
+)}
           </div>
         </header>
         
@@ -906,14 +992,53 @@ const importarExcel = async (evento) => {
                         </span>
                       </td>
                       <td className="p-4">
-                        <div className="flex flex-wrap gap-2">
-                          <button onClick={() => editarItem(item)} className="rounded-xl bg-[#174A9C] px-3 py-2 text-xs font-semibold text-white hover:bg-[#123A7A]">Editar</button>
-                          <button onClick={() => setItemQRCode(item)} className="rounded-xl bg-[#F05A28] px-3 py-2 text-xs font-semibold text-white hover:bg-[#D94A1F]" > QR Code </button>
-                          <button onClick={() => alterarStatus(item, "Disponível")} className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700">Disponível</button>
-                          <button onClick={() => alterarStatus(item, "Em uso")} className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-600">Em uso</button>
-                          <button onClick={() => alterarStatus(item, "Manutenção")} className="rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700">Manutenção</button>
-                          <button onClick={() => removerItem(item)} className="rounded-xl bg-slate-700 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800">Remover</button>
-                        </div>
+                       <div className="flex flex-wrap gap-2">
+  <button
+    onClick={() => setItemQRCode(item)}
+    className="rounded-xl bg-[#F05A28] px-3 py-2 text-xs font-semibold text-white hover:bg-[#D94A1F]"
+  >
+    QR Code
+  </button>
+
+  {adminLogado && (
+    <>
+      <button
+        onClick={() => editarItem(item)}
+        className="rounded-xl bg-[#174A9C] px-3 py-2 text-xs font-semibold text-white hover:bg-[#123A7A]"
+      >
+        Editar
+      </button>
+
+      <button
+        onClick={() => alterarStatus(item, "Disponível")}
+        className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+      >
+        Disponível
+      </button>
+
+      <button
+        onClick={() => alterarStatus(item, "Em uso")}
+        className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-600"
+      >
+        Em uso
+      </button>
+
+      <button
+        onClick={() => alterarStatus(item, "Manutenção")}
+        className="rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700"
+      >
+        Manutenção
+      </button>
+
+      <button
+        onClick={() => removerItem(item)}
+        className="rounded-xl bg-slate-700 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+      >
+        Remover
+      </button>
+    </>
+  )}
+</div>
                       </td>
                     </tr>
                   ))
