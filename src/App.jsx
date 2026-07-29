@@ -254,6 +254,62 @@ export default function App() {
 
   limparFormulario();
 };
+  const editarItem = (item) => {
+    setFormulario({
+      nome: item.nome || "",
+      projeto: item.projeto || "",
+      informacoes: item.informacoes || "",
+      quantidade: item.quantidade || "",
+      localizacao: item.localizacao || "",
+      status: item.status || "Disponível",
+    });
+    setEditandoId(item.id);
+    setAbaAtiva("cadastro");
+  };
+
+  const alterarStatus = async (item, novoStatus) => {
+    const { error } = await supabase
+      .from("itens")
+      .update({ status: novoStatus })
+      .eq("id", item.id);
+
+    if (error) {
+      console.error("Erro ao alterar status:", error);
+      alert("Erro ao alterar status no banco de dados.");
+      return;
+    }
+
+    setItens((itensAtuais) =>
+      itensAtuais.map((i) =>
+        i.id === item.id ? { ...i, status: novoStatus } : i
+      )
+    );
+  };
+
+  const removerItem = async (item) => {
+    if (!confirm(`Tem certeza que deseja remover "${item.nome}"?`)) return;
+
+    const { error } = await supabase
+      .from("itens")
+      .delete()
+      .eq("id", item.id);
+
+    if (error) {
+      console.error("Erro ao remover item:", error);
+      alert("Erro ao remover item do banco de dados.");
+      return;
+    }
+
+    setItens((itensAtuais) => itensAtuais.filter((i) => i.id !== item.id));
+
+    registrarHistorico({
+      item,
+      tipo: "Remoção",
+      quantidade: item.quantidade,
+      responsavel: "Admin",
+      observacao: "Item removido do sistema",
+    });
+  };
   
    const gerarDadosQRCode = (item) => {
   return [
