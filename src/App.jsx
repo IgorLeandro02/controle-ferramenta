@@ -64,6 +64,18 @@ export default function App() {
   setEmail("");
   setSenha("");
 };
+
+const fazerLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Erro ao deslogar:", error);
+      alert("Erro ao sair do sistema.");
+      return;
+    }
+    setUsuario(null);
+    setAbaAtiva("inicio");
+  };
+
   const [formulario, setFormulario] = useState(formularioVazio);
 
   useEffect(() => {
@@ -757,28 +769,7 @@ const importarExcel = async (evento) => {
 </div>
 </div>
           
-    {adminLogado && (
-  <div className="flex flex-wrap gap-3">
-    <label className="cursor-pointer rounded-2xl bg-[#F05A28] px-5 py-3 font-semibold text-white shadow transition hover:bg-[#D94A1F]">
-      Importar Excel
-      <input
-        type="file"
-        accept=".xlsx"
-        onChange={importarExcel}
-        className="hidden"
-      />
-    </label>
-
-    <button
-      onClick={exportarCSV}
-      className="rounded-2xl bg-[#174A9C] px-5 py-3 font-semibold text-white shadow transition hover:bg-[#123A7A]"
-    >
-      Exportar Excel/CSV
-    </button>
-  </div>
-)}
-
-{!adminLogado && (
+    {!adminLogado && (
   <div className="flex flex-wrap gap-3">
     <input
       value={email}
@@ -800,6 +791,34 @@ const importarExcel = async (evento) => {
       className="rounded-2xl bg-[#174A9C] px-5 py-3 font-semibold text-white shadow transition hover:bg-[#123A7A]"
     >
       Entrar
+    </button>
+  </div>
+)}
+
+{adminLogado && (
+  <div className="flex flex-wrap gap-3">
+    <label className="cursor-pointer rounded-2xl bg-[#F05A28] px-5 py-3 font-semibold text-white shadow transition hover:bg-[#D94A1F]">
+      Importar Excel
+      <input
+        type="file"
+        accept=".xlsx"
+        onChange={importarExcel}
+        className="hidden"
+      />
+    </label>
+
+    <button
+      onClick={exportarCSV}
+      className="rounded-2xl bg-[#174A9C] px-5 py-3 font-semibold text-white shadow transition hover:bg-[#123A7A]"
+    >
+      Exportar Excel/CSV
+    </button>
+
+    <button
+      onClick={fazerLogout}
+      className="rounded-2xl bg-rose-600 px-5 py-3 font-semibold text-white shadow transition hover:bg-rose-700"
+    >
+      Sair
     </button>
   </div>
 )}
