@@ -694,8 +694,16 @@ const importarExcel = async (evento) => {
    <main className="min-h-screen bg-gradient-to-br from-[#174A9C] via-white to-[#F05A28] p-4 md:p-8">
       <div className="mx-auto max-w-7xl">
         <header className="mb-8 rounded-3xl bg-white p-6 shadow-md md:p-8">
+          <img 
+  src="/logotipo-SENAI-CIMATEC-Vjul2025.png" 
+  alt="Logo SENAI CIMATEC" 
+  className="h-12 w-auto object-contain" 
+/>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
+               
+               
+            
               <p className="text-sm font-bold uppercase tracking-widest text-[#F05A28]">
                 Sistema De Controle Interno
               </p>
