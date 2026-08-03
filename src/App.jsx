@@ -212,6 +212,7 @@ const fazerLogout = async () => {
       )
     );
 
+
     limparFormulario();
     return;
   }
@@ -263,6 +264,8 @@ const fazerLogout = async () => {
       ...historicoAtual,
     ]);
   }
+
+  alert(editandoId ? "Item atualizado com sucesso!" : "Item cadastrado com sucesso!");
 
   limparFormulario();
 };
